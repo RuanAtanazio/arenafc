@@ -1,0 +1,1 @@
+ALTER TABLE `player_stats` ADD `player_name` text DEFAULT '' NOT NULL;
