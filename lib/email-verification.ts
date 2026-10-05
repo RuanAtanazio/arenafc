@@ -9,7 +9,11 @@ export async function verificationCodeHash(email:string,code:string){
 
 export async function sendVerificationCode(email:string,code:string){
   const apiKey=process.env.RESEND_API_KEY,from=process.env.RESEND_FROM_EMAIL;
-  if(!apiKey||!from)throw new Error('Configure RESEND_API_KEY e RESEND_FROM_EMAIL.');
+  if(!apiKey||!from)throw new Error('EmailServiceNotConfigured');
   const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},body:JSON.stringify({from,to:[email],subject:'Seu código de confirmação Arena FC',text:`Seu código Arena FC é ${code}. Ele expira em 10 minutos. Se você não solicitou este cadastro, ignore esta mensagem.`})});
-  if(!response.ok)throw new Error(`Falha ao enviar e-mail de confirmação (${response.status}).`);
+  if(!response.ok){
+    const details=await response.text().catch(()=> '');
+    console.error('Resend verification email failed',{status:response.status,details});
+    throw new Error(response.status===429?'EmailServiceRateLimited':'EmailDeliveryFailed');
+  }
 }
