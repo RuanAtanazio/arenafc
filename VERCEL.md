@@ -16,7 +16,9 @@ Use `.env.example` apenas como lista de nomes das variáveis. Configure `ARENA_A
 
 ## Banco de dados
 
-Depois de configurar `DATABASE_URL`, aplique o schema inicial uma vez com `pnpm db:migrate`. A migração cria tabelas se ainda não existirem e não apaga contas nem dados. A Vercel não executa essa migração automaticamente durante cada build.
+Depois de configurar `DATABASE_URL`, aplique o schema inicial uma vez com `pnpm db:migrate`. As versões executadas ficam registradas em `schema_migrations`; cada migração roda em transação e não é repetida em deploys seguintes. A Vercel não executa migrações automaticamente durante cada build. Não apague nem recrie o projeto Neon para fazer deploy.
+
+Contas, perfis, clubes/times, inscrições, torneios, resultados, conversas e configurações ficam nas tabelas PostgreSQL do Neon. O app não oferece exclusão de contas ou times; logout remove apenas a sessão de login. Deploys/rebuilds da Vercel não apagam o banco externo. Para recuperação contra exclusão acidental ou problema no provedor, habilite e confira backups/PITR do Neon conforme o plano, e teste periodicamente a restauração. Imagens usam Vercel Blob e precisam de backup separado se sua conta/plano não garantir retenção suficiente.
 
 O projeto não transfere os dados do Cloudflare D1/R2 para Neon/Blob. Se houver dados em produção no Cloudflare, exporte e migre-os separadamente antes de direcionar o domínio para a Vercel; não aponte a aplicação para o novo banco vazio esperando encontrar as contas antigas.
 

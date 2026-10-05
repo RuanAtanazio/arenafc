@@ -204,4 +204,4 @@ if(kind==='resolve'){
   return ok('Resultado confirmado pelo administrador.');
 }
 return fail('Ação desconhecida.')
-}catch(e){console.error(e);return fail('Não foi possível concluir a ação. Tente novamente.',500)}}
+}catch(e){console.error(e);const reason=e instanceof Error?e.message:'';if(reason.includes('DATABASE_URL')||reason.includes('EMAIL_CODE_SECRET'))return fail('A configuração do cadastro no servidor está incompleta. Confira as variáveis da Vercel e tente novamente.',503);return fail('Não foi possível acessar ou salvar os dados. Confira a conexão e a migração do banco Neon e tente novamente.',503)}}
