@@ -73,7 +73,7 @@ export async function POST(req:NextRequest){try{const b:any=await req.json(),kin
   if(!/^\S+@\S+\.\S+$/.test(email)||password.length<8||name.length<2)return fail('Preencha nome, e-mail e senha de pelo menos 8 caracteres.');
   if(await db().prepare('SELECT id FROM users WHERE email=?').bind(email).first())return fail('E-mail já cadastrado.');
   const pending=await db().prepare('SELECT created_at as createdAt FROM email_verifications WHERE email=?').bind(email).first<any>();
-  if(pending&&now-pending.createdAt<60000)return fail('Um código foi solicitado recentemente. Aguarde um minuto e use a opção de reenviar.',429);
+  if(pending&&now-pending.createdAt<60000)return ok('Um código ainda válido foi enviado recentemente. Use o código recebido; se não o encontrou, tente reenviar após um minuto.');
   const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%900000+100000),codeHash=await verificationCodeHash(email,code);
   await db().prepare('INSERT INTO email_verifications(email,name,password,ea_id,code_hash,attempts,expires_at,created_at) VALUES(?,?,?,?,?,0,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,password=excluded.password,ea_id=excluded.ea_id,code_hash=excluded.code_hash,attempts=0,expires_at=excluded.expires_at,created_at=excluded.created_at').bind(email,name,await hashPassword(password),eaId||null,codeHash,now+10*60000,now).run();
   try{await sendVerificationCode(email,code)}catch(error){
