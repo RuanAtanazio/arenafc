@@ -1,22 +1,22 @@
 # Publicar Arena FC na Vercel
 
-Este projeto usa o runtime padrão do Next.js, Neon/PostgreSQL para persistência, Resend para confirmação de e-mail e Vercel Blob para imagens.
+Este projeto usa o runtime padrão do Next.js e Neon/PostgreSQL para persistência. Cadastro e login principal são por nickname exclusivo e senha; não precisam de email ou Resend. Vercel Blob armazena imagens e Google OAuth é opcional.
 
 ## Serviços necessários
 
 1. Crie um banco PostgreSQL no Neon e copie a URL de conexão para `DATABASE_URL`.
-2. No Resend, valide um domínio de envio e crie `RESEND_API_KEY`. `RESEND_FROM_EMAIL` precisa usar esse domínio validado. Sem essas variáveis, o cadastro por código retorna erro explícito em vez de indicar falsamente que enviou a mensagem.
+2. Resend é opcional: o cadastro normal não envia email. Configure-o apenas se for usar recursos antigos de confirmação por email.
 3. Crie um armazenamento Vercel Blob e configure `BLOB_READ_WRITE_TOKEN`.
-4. Gere segredos aleatórios diferentes para `EMAIL_CODE_SECRET` e `ARENA_ADMIN_SETUP_TOKEN` (mínimo de 32 caracteres).
+4. Gere `ARENA_ADMIN_SETUP_TOKEN` como segredo aleatório forte (mínimo 32 caracteres). `EMAIL_CODE_SECRET` só é necessário para recursos legados de verificação de email.
 5. Para conectar/criar conta com Google, crie um OAuth Client ID do tipo Web no Google Cloud Console e configure `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`. Adicione `https://SEU-DOMINIO/api/google/callback` como URI de redirecionamento autorizado no cliente OAuth.
 
 Configure essas variáveis em **Vercel → Project → Settings → Environment Variables** e também no ambiente local, se for executar migrações ou testar. Nunca publique `.env`, `.env.local`, `.dev.vars`, tokens, senhas ou URLs de banco com credenciais.
 
-Use `.env.example` apenas como lista de nomes das variáveis. Configure `ARENA_ADMIN_EMAIL=atanazioruan5@gmail.com`; esse endereço será o proprietário e receberá todas as permissões. A conta se torna proprietária ao concluir o cadastro verificado nesse e-mail ou ao entrar com Google. Alternativamente, ative em `/admin/entrar` com uma senha nova de pelo menos 12 caracteres e `ARENA_ADMIN_SETUP_TOKEN`. Admins secundários existentes não bloqueiam o bootstrap do dono.
+Use `.env.example` apenas como lista de nomes das variáveis. Configure `ARENA_ADMIN_NICKNAME=atanazioruan5` para reservar o nickname do proprietário, que recebe todas as permissões. Configure também um `ARENA_ADMIN_SETUP_TOKEN` forte e ative a conta em `/admin/entrar` com esse nickname, o token e uma senha nova de pelo menos 12 caracteres. Contas antigas ainda podem ser reconhecidas pelo `ARENA_ADMIN_EMAIL` opcional. Admins secundários existentes não bloqueiam o bootstrap do dono.
 
 ## Banco de dados
 
-Depois de configurar `DATABASE_URL`, aplique o schema inicial uma vez com `pnpm db:migrate`. As versões executadas ficam registradas em `schema_migrations`; cada migração roda em transação e não é repetida em deploys seguintes. A Vercel não executa migrações automaticamente durante cada build. Não apague nem recrie o projeto Neon para fazer deploy.
+Depois de configurar `DATABASE_URL`, aplique todas as migrações pendentes com `pnpm db:migrate`. A migração `0002_usernames` mantém os registros atuais e atribui um nickname aos usuários antigos; emails existentes são preservados, mas deixam de ser obrigatórios para contas novas. As versões executadas ficam registradas em `schema_migrations`; cada migração roda em transação e não é repetida em deploys seguintes. A Vercel não executa migrações automaticamente durante cada build. Não apague nem recrie o projeto Neon para fazer deploy.
 
 Contas, perfis, clubes/times, inscrições, torneios, resultados, conversas e configurações ficam nas tabelas PostgreSQL do Neon. O app não oferece exclusão de contas ou times; logout remove apenas a sessão de login. Deploys/rebuilds da Vercel não apagam o banco externo. Para recuperação contra exclusão acidental ou problema no provedor, habilite e confira backups/PITR do Neon conforme o plano, e teste periodicamente a restauração. Imagens usam Vercel Blob e precisam de backup separado se sua conta/plano não garantir retenção suficiente.
 
@@ -30,6 +30,6 @@ Para o OAuth opcional do Discord, configure `DISCORD_CLIENT_ID` e `DISCORD_CLIEN
 
 ## Cadastro e administradores
 
-O cadastro por e-mail envia um código de seis dígitos pelo Resend. O endereço só vira conta e recebe sessão após a confirmação; os códigos expiram em 10 minutos, têm no máximo cinco tentativas e podem ser reenviados após um minuto. O botão “Continuar com Google” oferece OAuth Google quando as duas variáveis Google estiverem configuradas. O OAuth confirma que a conta do Google controla o endereço e não precisa do Resend.
+O cadastro solicita nickname exclusivo (3–30 caracteres) e senha. O nickname não pode ser reutilizado; o login aceita nickname e senha. Cada conta, sessão, time, inscrição, campeonato e resultado é salvo no PostgreSQL configurado em `DATABASE_URL`. O botão “Continuar com Google” continua opcional se OAuth estiver configurado. Contas antigas podem continuar entrando pelo email até adotarem o nickname migrado no perfil.
 
 As contas não têm ação de exclusão no site e permanecem no PostgreSQL até uma operação explícita de manutenção do banco. Administradores convidados precisam confirmar o próprio e-mail; o proprietário pode selecionar permissões individuais para campeonatos, pagamentos, resultados, configurações e comunidade. Somente o proprietário pode convidar, remover ou alterar permissões de administradores.

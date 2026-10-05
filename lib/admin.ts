@@ -10,8 +10,9 @@ export const ADMIN_PERMISSIONS=[
 export type AdminPermission=typeof ADMIN_PERMISSIONS[number];
 
 export function isOwnerAccount(user:any){
+  const ownerNickname=process.env.ARENA_ADMIN_NICKNAME?.trim().toLowerCase();
   const ownerEmail=process.env.ARENA_ADMIN_EMAIL?.trim().toLowerCase();
-  return !!user&&user.role==='admin'&&!!ownerEmail&&String(user.email).toLowerCase()===ownerEmail;
+  return !!user&&user.role==='admin'&&((!!ownerNickname&&String(user.username).toLowerCase()===ownerNickname)||!!ownerEmail&&String(user.email||'').toLowerCase()===ownerEmail);
 }
 
 export async function permissionsFor(user:any):Promise<AdminPermission[]>{

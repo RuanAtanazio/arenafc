@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {currentUser,db,hashPassword,id,str} from '@/lib/arena';
+import {uniqueUsername} from '@/lib/username';
 
 function finish(req:NextRequest,location:string,session?:string){
   const res=NextResponse.redirect(new URL(location,req.url));
@@ -39,7 +40,8 @@ export async function GET(req:NextRequest){
       if(!discord.verified||!/^\S+@\S+\.\S+$/.test(email))return finish(req,'/entrar?discord=verify-email');
       if(await db().prepare('SELECT id FROM users WHERE email=?').bind(email).first())return finish(req,'/entrar?discord=link-required');
       accountId=id();
-      await db().prepare('INSERT INTO users(id,email,password,email_login_enabled,name,discord_id,role,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(accountId,email,await hashPassword(crypto.randomUUID()),0,str(discord.global_name||discord.username,80)||'Jogador',discord.id,'player',Date.now()).run();
+      const ownerEmail=process.env.ARENA_ADMIN_EMAIL?.trim().toLowerCase(),ownerNickname=(process.env.ARENA_ADMIN_NICKNAME||ownerEmail?.split('@')[0]||'').trim().toLowerCase(),username=email===ownerEmail?ownerNickname:await uniqueUsername(email.split('@')[0],async(candidate)=>!!await db().prepare('SELECT id FROM users WHERE username=?').bind(candidate).first()),role=email===ownerEmail?'admin':'player';
+      await db().prepare('INSERT INTO users(id,username,email,password,email_login_enabled,email_verified,name,discord_id,role,created_at) VALUES(?,?,?,?,0,1,?,?,?,?)').bind(accountId,username,email,await hashPassword(crypto.randomUUID()),str(discord.global_name||discord.username,80)||username,discord.id,role,Date.now()).run();
     }
     const session=id();await db().prepare('INSERT INTO sessions VALUES(?,?,?)').bind(session,accountId,Date.now()+30*86400000).run();
     return finish(req,'/perfil?discord=connected',session);

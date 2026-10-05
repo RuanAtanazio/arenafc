@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db,hashPassword,id,str} from '@/lib/arena';
+import {uniqueUsername} from '@/lib/username';
 
 export const runtime='nodejs';
 
@@ -28,14 +29,14 @@ export async function GET(req:NextRequest){
     const email=str(profile.email,200).toLowerCase();
     if(!profile.sub||profile.email_verified!==true||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return finish(req,'unverified');
 
-    const ownerEmail=process.env.ARENA_ADMIN_EMAIL?.trim().toLowerCase();
+    const ownerEmail=process.env.ARENA_ADMIN_EMAIL?.trim().toLowerCase(),ownerNickname=(process.env.ARENA_ADMIN_NICKNAME||ownerEmail?.split('@')[0]||'').trim().toLowerCase();
     let account=await db().prepare('SELECT id,role FROM users WHERE email=?').bind(email).first<any>();
     const invite=await db().prepare('SELECT email FROM admin_invites WHERE email=?').bind(email).first<any>();
     const owner=email===ownerEmail;
     if(!account){
-      const accountId=id(),session=id(),role=owner||invite?'admin':'player';
+      const accountId=id(),session=id(),username=owner?ownerNickname:await uniqueUsername(email.split('@')[0],async(candidate)=>!!await db().prepare('SELECT id FROM users WHERE username=?').bind(candidate).first()),role=owner||invite?'admin':'player';
       const statements=[
-        db().prepare('INSERT INTO users(id,email,password,email_login_enabled,email_verified,name,role,created_at) VALUES(?,?,?,0,1,?,?,?)').bind(accountId,email,await hashPassword(crypto.randomUUID()),str(profile.name,80)||'Jogador',role,Date.now()),
+        db().prepare('INSERT INTO users(id,username,email,password,email_login_enabled,email_verified,name,role,created_at) VALUES(?,?,?, ?,0,1,?,?,?)').bind(accountId,username,email,await hashPassword(crypto.randomUUID()),str(profile.name,80)||username,role,Date.now()),
         db().prepare('INSERT INTO sessions VALUES(?,?,?)').bind(session,accountId,Date.now()+30*86400000),
       ];
       if(invite)statements.push(db().prepare('DELETE FROM admin_invites WHERE email=?').bind(email));

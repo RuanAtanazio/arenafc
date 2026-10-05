@@ -1,3 +1,6 @@
+## Contas com nickname
+
+O cadastro e login atuais usam nickname exclusivo e senha; o campo de email não é obrigatório. Times e inscrições pertencem à conta autenticada e ficam no PostgreSQL do Neon usado pela Vercel. No perfil, a conta aparece pelo nickname.
 # Arena FC — abrir no VS Code
 
 Código da versão 14, commit 6542abbe3a06484a98d0423407e5fb01415b7357.
